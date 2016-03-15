@@ -61,9 +61,10 @@ object AppMain extends App with ArgonautSupport {
       get {
         parameters('ticker) { (ticker) =>
           complete {
-            val ret = Await.result(fetchStockData(ticker), 5000 millis)
+            val ret = Await.result(fetchStockData(ticker), 10000 millis)
             ret match {
               case Right(json) => {
+                System.out.println(json)
                 json
               }
               case Left(str) => {
