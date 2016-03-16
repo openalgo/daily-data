@@ -6,10 +6,9 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
-import akka.http.scaladsl.model.{DateTime, HttpRequest, HttpResponse}
-import akka.http.scaladsl.server.Directives.{complete, get, path}
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.server.Directives.{complete, get, parameters, path}
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import akka.http.scaladsl.server.Directives.parameters
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import argonaut.Argonaut._
@@ -26,8 +25,6 @@ object AppMain extends App with ArgonautSupport {
   implicit val materializer = ActorMaterializer()
   implicit val ec = system.dispatcher
   val config = ConfigFactory.load()
-
-
 
   lazy val quandlConnectionFlow: Flow[HttpRequest, HttpResponse, Any] =
     Http().outgoingConnectionHttps(config.getString("services.quandlHost"), config.getInt("services.quandlPort"))
