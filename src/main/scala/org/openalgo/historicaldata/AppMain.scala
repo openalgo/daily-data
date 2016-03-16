@@ -14,27 +14,23 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import argonaut.Argonaut._
 import argonaut._
+import com.typesafe.config.ConfigFactory
 import de.heikoseeberger.akkahttpargonaut.ArgonautSupport
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-
-
-case class QuandlDataPoint(date: DateTime, open: Float, high: Float, low: Float, close: Float, volume: Int,
-                           exDividend: Float, splitRatio: Float, adjOpen: Float, adjHigh: Float,
-                           adjLow: Float, adjClose: Float, adjVolume: Int)
-
-case class QuandlDataList(dataList: List[QuandlDataPoint])
 
 object AppMain extends App with ArgonautSupport {
 
   implicit val system = ActorSystem("my-system")
   implicit val materializer = ActorMaterializer()
   implicit val ec = system.dispatcher
+  val config = ConfigFactory.load()
+
 
 
   lazy val quandlConnectionFlow: Flow[HttpRequest, HttpResponse, Any] =
-    Http().outgoingConnectionHttps("www.quandl.com", 443)
+    Http().outgoingConnectionHttps(config.getString("services.quandlHost"), config.getInt("services.quandlPort"))
 
   def quandlRequest(request: HttpRequest): Future[HttpResponse] = Source.single(request).via(quandlConnectionFlow).runWith(Sink.head)
 
@@ -54,18 +50,15 @@ object AppMain extends App with ArgonautSupport {
     }
   }
 
-
   val route =
-
     path("stocks") {
       get {
         parameters('ticker) { (ticker) =>
           complete {
-            val ret = Await.result(fetchStockData(ticker), 10000 millis)
+            val ret = Await.result(fetchStockData(ticker), 30000 millis)
             ret match {
               case Right(json) => {
-                System.out.println(json)
-                json
+                json.field(new JsonField("dataset_data"))
               }
               case Left(str) => {
                 str
@@ -76,7 +69,7 @@ object AppMain extends App with ArgonautSupport {
       }
     }
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+  val bindingFuture = Http().bindAndHandle(route, config.getString("http.interface"), config.getInt("http.port"))
 
   println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
   Console.readLine() // for the future transformations
